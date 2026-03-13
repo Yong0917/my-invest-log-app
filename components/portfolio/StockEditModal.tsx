@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import {
@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -58,6 +59,7 @@ export function StockEditModal({
 }: StockEditModalProps) {
   // 모달 열림/닫힘 상태 직접 제어 (저장 후 자동 닫힘 처리용)
   const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const form = useForm<PortfolioFormValues>({
     resolver: standardSchemaResolver(portfolioFormSchema),
@@ -86,11 +88,13 @@ export function StockEditModal({
 
   /**
    * 폼 제출 처리
-   * 유효성 통과 시 외부 핸들러 호출 → 모달 닫힘
+   * 유효성 통과 시 외부 핸들러 호출 완료 후 → 모달 닫힘
    */
   function handleSubmit(values: PortfolioFormValues) {
-    onSubmit(portfolio.id, values);
-    setOpen(false);
+    startTransition(async () => {
+      await onSubmit(portfolio.id, values);
+      setOpen(false);
+    });
   }
 
   /**
@@ -237,12 +241,13 @@ export function StockEditModal({
             />
 
             <DialogFooter className="gap-2">
-              {/* 취소 버튼 */}
-              <Button type="button" variant="outline" onClick={handleCancel}>
+              <Button type="button" variant="outline" onClick={handleCancel} disabled={isPending}>
                 취소
               </Button>
-              {/* 저장 버튼 */}
-              <Button type="submit">저장</Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending && <Loader2 className="size-4 animate-spin mr-1" />}
+                저장
+              </Button>
             </DialogFooter>
           </form>
         </Form>
