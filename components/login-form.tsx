@@ -39,6 +39,7 @@ export function LoginForm({
       });
       if (error) throw error;
       router.push("/dashboard");
+      router.refresh();
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "오류가 발생했습니다");
     } finally {
