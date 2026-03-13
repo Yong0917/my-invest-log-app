@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BarChart2, ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   calcTotalEvalAmount,
   calcTotalInvestAmount,
-  calcTotalProfitRate,
 } from "@/lib/calculate";
 import { formatUSD, formatKRW, formatProfitRate } from "@/lib/format";
 import type { Portfolio, PortfolioWithPrice } from "@/types/portfolio";
@@ -30,6 +29,8 @@ export function DashboardClient({ initialPortfolios }: DashboardClientProps) {
   const [exchangeRate, setExchangeRate] = useState<string>("1480");
 
   // 현재가 병렬 조회
+  const portfolioIds = useMemo(() => initialPortfolios.map((p) => p.id).join(","), [initialPortfolios]);
+
   useEffect(() => {
     if (initialPortfolios.length === 0) return;
 
@@ -51,8 +52,7 @@ export function DashboardClient({ initialPortfolios }: DashboardClientProps) {
       setPriceMap(map);
       setPriceLoading(false);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialPortfolios.map((p) => p.id).join(",")]);
+  }, [portfolioIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const portfoliosWithPrice: PortfolioWithPrice[] = initialPortfolios.map((p) => ({
     ...p,
