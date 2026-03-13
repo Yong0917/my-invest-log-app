@@ -30,11 +30,10 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ## 아키텍처
 
 ### 인증 흐름
-- `middleware.ts` → `lib/supabase/proxy.ts` (`updateSession`): 세션 갱신 및 라우팅 가드
+- `proxy.ts` → `lib/supabase/proxy.ts` (`updateSession`): 세션 갱신 및 라우팅 가드 (Next.js 16+ 기준, `middleware.ts` 대체)
   - 인증된 사용자가 `/`에 접근 → `/dashboard` 리다이렉트
   - 미인증 사용자가 `/auth/**` 외 경로 접근 → `/auth/login` 리다이렉트
 - `app/auth/confirm/route.ts`: 이메일 OTP 검증 Route Handler
-- `proxy.ts` (루트): 스타터킷 잔여 파일 — `middleware.ts`가 실제 미들웨어
 
 ### Supabase 클라이언트 패턴
 - `lib/supabase/server.ts` → `createClient()`: Server Components, Server Actions, Route Handlers (매 호출마다 새 인스턴스 — Fluid compute 요구사항)
