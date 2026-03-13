@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { BarChart2, Plus, Pencil, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,7 +32,7 @@ import {
   updatePortfolio,
   deletePortfolio,
 } from "@/app/actions/portfolio";
-import { calcProfitRate, calcEvalAmount } from "@/lib/calculate";
+import { calcProfitRate, calcEvalAmount, calcProfitAmount } from "@/lib/calculate";
 import { formatProfitRate, formatCurrency } from "@/lib/format";
 import type { Portfolio, PortfolioWithPrice } from "@/types/portfolio";
 import type { PortfolioFormValues } from "@/schemas/portfolio";
@@ -58,6 +58,8 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
   const [actionError, setActionError] = useState<string | null>(null);
 
   // 현재가 + 전일대비 병렬 조회
+  const portfolioIds = useMemo(() => portfolios.map((p) => p.id).join(","), [portfolios]);
+
   useEffect(() => {
     if (portfolios.length === 0) return;
 
@@ -83,8 +85,7 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
       setPriceDataMap(map);
       setPriceLoading(false);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [portfolios.map((p) => p.id).join(",")]);
+  }, [portfolioIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const portfoliosWithPrice: PortfolioWithPrice[] = portfolios.map((p) => ({
     ...p,
@@ -101,14 +102,33 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
       setActionError(result.error ?? "종목 등록 실패");
       return;
     }
-    const newItem: PortfolioWithPrice = {
-      id: crypto.randomUUID(),
-      user_id: "",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      ...values,
-    };
-    setPortfolios((prev) => [...prev, newItem]);
+
+    if (result.merged) {
+      // 기존 종목에 합산: 수량 + 가중평균 재계산
+      setPortfolios((prev) =>
+        prev.map((p) => {
+          if (p.ticker !== values.ticker) return p;
+          const totalQty = p.quantity + values.quantity;
+          const newAvg =
+            (p.quantity * p.avg_price + values.quantity * values.avg_price) / totalQty;
+          return {
+            ...p,
+            quantity: totalQty,
+            avg_price: Math.round(newAvg * 10000) / 10000,
+          };
+        }),
+      );
+    } else {
+      // 실제 DB에서 반환된 id를 사용해야 이후 수정/삭제가 정상 동작
+      const newItem: PortfolioWithPrice = {
+        id: result.id!,
+        user_id: "",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...values,
+      };
+      setPortfolios((prev) => [...prev, newItem]);
+    }
   }
 
   // 종목 수정 핸들러
@@ -181,6 +201,7 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
               const priceData = priceDataMap[portfolio.ticker];
               const currentPrice = portfolio.current_price ?? portfolio.avg_price;
               const profitRate = calcProfitRate(portfolio.avg_price, currentPrice);
+              const profitAmount = calcProfitAmount(portfolio.avg_price, currentPrice, portfolio.quantity);
               const evalAmount = calcEvalAmount(currentPrice, portfolio.quantity);
               const isProfitPositive = profitRate >= 0;
               const changePercent = priceData?.changePercent ?? null;
@@ -271,20 +292,33 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
                     </div>
 
                     {/* 수익률 푸터 */}
-                    <div className={`px-5 py-3 flex items-center justify-between ${
-                      isProfitPositive ? "bg-emerald-500/10" : "bg-rose-500/10"
+                    <div className={`px-5 py-3.5 flex items-center justify-between border-t ${
+                      isProfitPositive
+                        ? "bg-emerald-500/[0.06] border-emerald-500/20"
+                        : "bg-rose-500/[0.06] border-rose-500/20"
                     }`}>
-                      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                        수익률
+                      <p className="text-[11px] font-medium text-muted-foreground tracking-wide">
+                        평가손익
                       </p>
                       {priceLoading ? (
-                        <Skeleton className="h-5 w-14" />
+                        <Skeleton className="h-5 w-24" />
+                      ) : portfolio.current_price != null ? (
+                        <div className="flex items-center gap-2 tabular-nums">
+                          <span className={`text-sm font-bold ${
+                            isProfitPositive ? "text-emerald-500" : "text-rose-500"
+                          }`}>
+                            {isProfitPositive ? "+" : ""}{formatCurrency(profitAmount, portfolio.currency)}
+                          </span>
+                          <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${
+                            isProfitPositive
+                              ? "bg-emerald-500/15 text-emerald-500"
+                              : "bg-rose-500/15 text-rose-500"
+                          }`}>
+                            {formatProfitRate(profitRate)}
+                          </span>
+                        </div>
                       ) : (
-                        <p className={`font-bold text-sm tabular-nums ${
-                          isProfitPositive ? "text-emerald-500" : "text-rose-500"
-                        }`}>
-                          {portfolio.current_price != null ? formatProfitRate(profitRate) : "-"}
-                        </p>
+                        <p className="font-bold text-sm text-muted-foreground">-</p>
                       )}
                     </div>
                   </CardContent>
@@ -315,6 +349,7 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
                     const priceData = priceDataMap[portfolio.ticker];
                     const currentPrice = portfolio.current_price ?? portfolio.avg_price;
                     const profitRate = calcProfitRate(portfolio.avg_price, currentPrice);
+                    const profitAmount = calcProfitAmount(portfolio.avg_price, currentPrice, portfolio.quantity);
                     const evalAmount = calcEvalAmount(currentPrice, portfolio.quantity);
                     const isProfitPositive = profitRate >= 0;
                     const changePercent = priceData?.changePercent ?? null;
@@ -357,9 +392,14 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
                         </TableCell>
                         <TableCell className={`text-right font-bold tabular-nums text-sm px-4 py-3.5 ${isProfitPositive ? "text-emerald-500" : "text-rose-500"}`}>
                           {priceLoading ? (
-                            <Skeleton className="h-4 w-12 ml-auto" />
+                            <Skeleton className="h-4 w-20 ml-auto" />
                           ) : portfolio.current_price != null ? (
-                            formatProfitRate(profitRate)
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span>{formatProfitRate(profitRate)}</span>
+                              <span className="text-xs font-medium opacity-80">
+                                {isProfitPositive ? "+" : ""}{formatCurrency(profitAmount, portfolio.currency)}
+                              </span>
+                            </div>
                           ) : "-"}
                         </TableCell>
                         <TableCell className="px-3 py-3.5">
