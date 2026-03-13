@@ -41,7 +41,7 @@ interface StockEditModalProps {
   /** 수정할 종목 데이터 */
   portfolio: Portfolio;
   /** 폼 제출 성공 시 호출되는 핸들러 */
-  onSubmit: (id: string, values: PortfolioFormValues) => void;
+  onSubmit: (id: string, values: PortfolioFormValues) => void | Promise<void>;
 }
 
 /**
