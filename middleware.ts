@@ -8,11 +8,12 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * 아래 경로를 제외한 모든 요청에 미들웨어 적용:
-     * - _next/static (정적 파일)
-     * - _next/image (이미지 최적화)
-     * - favicon.ico
-     * - 이미지 파일 (.svg, .png, .jpg, .jpeg, .gif, .webp)
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - images - .svg, .png, .jpg, .jpeg, .gif, .webp
+     * Feel free to modify this pattern to include more paths.
      */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
