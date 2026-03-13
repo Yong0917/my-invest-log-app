@@ -36,7 +36,7 @@ import {
   calcTotalProfitRate,
 } from "@/lib/calculate";
 import { formatUSD, formatKRW, formatProfitRate, formatCurrency } from "@/lib/format";
-import type { Portfolio } from "@/types/portfolio";
+import type { PortfolioWithPrice } from "@/types/portfolio";
 import type { PortfolioFormValues } from "@/schemas/portfolio";
 
 /**
@@ -44,25 +44,28 @@ import type { PortfolioFormValues } from "@/schemas/portfolio";
  * Phase 1: Mock 데이터 기반 CRUD 인터랙션 + 수익률 계산 로직 검증
  */
 export default function DashboardPage() {
-  const [portfolios, setPortfolios] = useState<Portfolio[]>(MOCK_PORTFOLIOS);
+  const [portfolios, setPortfolioWithPrices] = useState<PortfolioWithPrice[]>(MOCK_PORTFOLIOS);
 
   const handleAddStock = (values: PortfolioFormValues) => {
-    const newPortfolio: Portfolio = {
+    const newPortfolioWithPrice: PortfolioWithPrice = {
       id: crypto.randomUUID(),
+      user_id: "mock-user-id",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       ...values,
       current_price: values.avg_price,
     };
-    setPortfolios((prev) => [...prev, newPortfolio]);
+    setPortfolioWithPrices((prev) => [...prev, newPortfolioWithPrice]);
   };
 
   const handleEditStock = (id: string, values: PortfolioFormValues) => {
-    setPortfolios((prev) =>
+    setPortfolioWithPrices((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...values } : p))
     );
   };
 
   const handleDeleteStock = (id: string) => {
-    setPortfolios((prev) => prev.filter((p) => p.id !== id));
+    setPortfolioWithPrices((prev) => prev.filter((p) => p.id !== id));
   };
 
   const totalEval = calcTotalEvalAmount(portfolios);

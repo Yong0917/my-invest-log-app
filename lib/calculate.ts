@@ -1,4 +1,4 @@
-import type { Portfolio } from "@/types/portfolio";
+import type { PortfolioWithPrice } from "@/types/portfolio";
 
 /**
  * 개별 종목 수익률 계산 (%)
@@ -34,7 +34,7 @@ export function calcProfitAmount(
  * 각 종목의 투자금액 비중으로 가중 평균 계산
  * Phase 2에서 환율 적용 예정 — 현재는 통화 구분 없이 숫자만으로 계산
  */
-export function calcTotalProfitRate(holdings: Portfolio[]): number {
+export function calcTotalProfitRate(holdings: PortfolioWithPrice[]): number {
   // current_price가 없는 종목은 계산에서 제외
   const validHoldings = holdings.filter((h) => h.current_price !== undefined);
 
@@ -63,7 +63,7 @@ export function calcTotalProfitRate(holdings: Portfolio[]): number {
  * 포트폴리오 총 평가금액 (통화별 분리 합산)
  * Phase 2에서 환율 통합 예정
  */
-export function calcTotalEvalAmount(holdings: Portfolio[]): {
+export function calcTotalEvalAmount(holdings: PortfolioWithPrice[]): {
   usd: number;
   krw: number;
 } {
@@ -86,7 +86,7 @@ export function calcTotalEvalAmount(holdings: Portfolio[]): {
 /**
  * 포트폴리오 총 투자금액 (통화별 분리 합산)
  */
-export function calcTotalInvestAmount(holdings: Portfolio[]): {
+export function calcTotalInvestAmount(holdings: PortfolioWithPrice[]): {
   usd: number;
   krw: number;
 } {

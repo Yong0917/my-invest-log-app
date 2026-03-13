@@ -41,7 +41,7 @@ export function formatProfitRate(rate: number): string {
  */
 export function formatCurrency(
   value: number,
-  currency: "KRW" | "USD"
+  currency: string
 ): string {
   if (currency === "USD") return formatUSD(value);
   return formatKRW(value);

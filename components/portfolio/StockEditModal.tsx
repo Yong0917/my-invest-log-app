@@ -32,7 +32,7 @@ import {
   portfolioFormSchema,
   type PortfolioFormValues,
 } from "@/schemas/portfolio";
-import type { Portfolio } from "@/types/portfolio";
+import type { Portfolio, Currency } from "@/types/portfolio";
 
 /** 주식 수정 모달 Props */
 interface StockEditModalProps {
@@ -66,7 +66,7 @@ export function StockEditModal({
       name: portfolio.name,
       quantity: portfolio.quantity,
       avg_price: portfolio.avg_price,
-      currency: portfolio.currency,
+      currency: portfolio.currency as Currency,
     },
   });
 
@@ -80,7 +80,7 @@ export function StockEditModal({
       name: portfolio.name,
       quantity: portfolio.quantity,
       avg_price: portfolio.avg_price,
-      currency: portfolio.currency,
+      currency: portfolio.currency as Currency,
     });
   }, [portfolio, form]);
 
@@ -102,7 +102,7 @@ export function StockEditModal({
       name: portfolio.name,
       quantity: portfolio.quantity,
       avg_price: portfolio.avg_price,
-      currency: portfolio.currency,
+      currency: portfolio.currency as Currency,
     });
     setOpen(false);
   }
