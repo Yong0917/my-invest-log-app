@@ -55,10 +55,20 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 미인증 사용자가 보호된 경로에 접근하면 로그인 페이지로 리다이렉트
+  // PWA 필수 공개 파일(manifest, 아이콘)은 인증 없이 접근 허용
+  const publicPaths = [
+    "/manifest.webmanifest",
+    "/apple-touch-icon.png",
+    "/icon-192.png",
+    "/icon-512.png",
+    "/icon-maskable.png",
+    "/icon.svg",
+  ];
   if (
     !user &&
     !request.nextUrl.pathname.startsWith("/auth") &&
-    request.nextUrl.pathname !== "/"
+    request.nextUrl.pathname !== "/" &&
+    !publicPaths.includes(request.nextUrl.pathname)
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";

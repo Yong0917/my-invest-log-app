@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "투자 기록",
   description: "내 포트폴리오를 한눈에 관리하는 투자 기록 앱",
-  manifest: "/manifest.webmanifest",
+  // manifest link는 app/manifest.ts가 자동 주입 — 중복 방지를 위해 여기서는 제거
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -47,6 +47,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* iOS Safari PWA 전체화면 모드 — Next.js가 자동 생성 안 함 */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+      </head>
       <body className={`${geistSans.className} antialiased`}>
         <ThemeProvider
           attribute="class"
