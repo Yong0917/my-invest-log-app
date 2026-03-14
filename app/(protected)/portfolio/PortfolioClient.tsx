@@ -1,11 +1,22 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { BarChart2, Plus, Pencil, Trash2, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  BarChart2,
+  Plus,
+  Pencil,
+  Trash2,
+  TrendingUp,
+  TrendingDown,
+  ChevronDown,
+  FileSpreadsheet,
+  FileText,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -25,6 +36,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { StockAddModal } from "@/components/portfolio/StockAddModal";
 import { StockEditModal } from "@/components/portfolio/StockEditModal";
 import { StockDetailModal } from "@/components/portfolio/StockDetailModal";
@@ -51,6 +68,7 @@ interface PortfolioClientProps {
  * 보유 종목 관리 Client Component
  * - 종목 추가/수정/삭제 CRUD
  * - 현재가 + 전일대비 병렬 조회
+ * - 체크박스 선택 후 CSV / PDF 내보내기
  */
 export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
   const [portfolios, setPortfolios] = useState<PortfolioWithPrice[]>(initialPortfolios);
@@ -58,6 +76,11 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
   const [priceLoading, setPriceLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [detailPortfolio, setDetailPortfolio] = useState<PortfolioWithPrice | null>(null);
+  const [detailChangePercent, setDetailChangePercent] = useState<number | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  // 선택된 종목 ID Set
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // 에러 메시지 5초 후 자동 제거
   useEffect(() => {
@@ -65,15 +88,12 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
     const timer = setTimeout(() => setActionError(null), 5000);
     return () => clearTimeout(timer);
   }, [actionError]);
-  const [detailChangePercent, setDetailChangePercent] = useState<number | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
 
   // 현재가 + 전일대비 병렬 조회
   const portfolioIds = useMemo(() => portfolios.map((p) => p.id).join(","), [portfolios]);
 
   useEffect(() => {
     if (portfolios.length === 0) return;
-
     setPriceLoading(true);
     const tickers = portfolios.map((p) => p.ticker);
 
@@ -109,6 +129,145 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
   }));
 
   const hasStocks = portfolios.length > 0;
+  const allSelected =
+    portfolios.length > 0 && portfolios.every((p) => selectedIds.has(p.id));
+  const someSelected = selectedIds.size > 0;
+
+  // 전체 선택 / 해제
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(portfolios.map((p) => p.id)));
+    }
+  }
+
+  // 개별 선택 토글
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 내보낼 대상: 선택된 것만, 없으면 전체
+  function getExportTargets() {
+    if (selectedIds.size === 0) return portfoliosWithPrice;
+    return portfoliosWithPrice.filter((p) => selectedIds.has(p.id));
+  }
+
+  // CSV 내보내기
+  function handleExportCSV() {
+    const items = getExportTargets();
+    const headers = [
+      "종목명", "티커", "통화", "보유수량",
+      "평균매수가", "현재가", "평가금액", "수익률(%)", "평가손익",
+    ];
+    const rows = items.map((p) => {
+      const currentPrice = p.current_price ?? p.avg_price;
+      const evalAmount = calcEvalAmount(currentPrice, p.quantity);
+      const profitAmount = calcProfitAmount(p.avg_price, currentPrice, p.quantity);
+      const profitRate = calcProfitRate(p.avg_price, currentPrice);
+      return [
+        p.name,
+        p.ticker,
+        p.currency,
+        p.quantity,
+        p.avg_price,
+        p.current_price ?? "",
+        evalAmount.toFixed(2),
+        profitRate.toFixed(2),
+        profitAmount.toFixed(2),
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${cell}"`).join(","))
+      .join("\n");
+
+    // BOM 추가 (Excel 한글 깨짐 방지)
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `포트폴리오_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // PDF 내보내기 (새 탭 열어 인쇄)
+  function handleExportPDF() {
+    const items = getExportTargets();
+    const date = new Date().toLocaleDateString("ko-KR");
+
+    const tableRows = items
+      .map((p) => {
+        const currentPrice = p.current_price ?? p.avg_price;
+        const evalAmount = calcEvalAmount(currentPrice, p.quantity);
+        const profitAmount = calcProfitAmount(p.avg_price, currentPrice, p.quantity);
+        const profitRate = calcProfitRate(p.avg_price, currentPrice);
+        const profitColor = profitRate >= 0 ? "#059669" : "#dc2626";
+        return `
+        <tr>
+          <td>${p.name}</td>
+          <td style="color:#6b7280">${p.ticker}</td>
+          <td>${p.currency}</td>
+          <td style="text-align:right">${p.quantity}주</td>
+          <td style="text-align:right">${p.avg_price.toLocaleString()}</td>
+          <td style="text-align:right">${p.current_price != null ? currentPrice.toLocaleString() : "-"}</td>
+          <td style="text-align:right">${evalAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+          <td style="text-align:right;color:${profitColor};font-weight:600">
+            ${profitRate >= 0 ? "+" : ""}${profitRate.toFixed(2)}%
+          </td>
+          <td style="text-align:right;color:${profitColor};font-weight:600">
+            ${profitAmount >= 0 ? "+" : ""}${profitAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </td>
+        </tr>`;
+      })
+      .join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="ko"><head>
+  <meta charset="UTF-8">
+  <title>포트폴리오 현황</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; padding: 32px; color: #111; font-size: 13px; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .date { color: #6b7280; margin-bottom: 24px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f3f4f6; font-size: 11px; font-weight: 600; text-transform: uppercase;
+         letter-spacing: 0.05em; color: #6b7280; padding: 10px 12px; text-align: left; border-bottom: 2px solid #e5e7eb; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; }
+    tr:last-child td { border-bottom: none; }
+    @media print { body { padding: 16px; } }
+  </style>
+</head><body>
+  <h1>포트폴리오 현황</h1>
+  <p class="date">기준일: ${date}${selectedIds.size > 0 ? ` · ${items.length}개 종목 선택` : ` · 전체 ${items.length}개 종목`}</p>
+  <table>
+    <thead>
+      <tr>
+        <th>종목명</th><th>티커</th><th>통화</th><th style="text-align:right">보유수량</th>
+        <th style="text-align:right">평균매수가</th><th style="text-align:right">현재가</th>
+        <th style="text-align:right">평가금액</th><th style="text-align:right">수익률</th>
+        <th style="text-align:right">평가손익</th>
+      </tr>
+    </thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+</body></html>`;
+
+    const win = window.open("", "_blank");
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => win.print(), 300);
+    }
+  }
 
   // 종목 추가 핸들러
   async function handleAddStock(values: PortfolioFormValues) {
@@ -120,7 +279,6 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
     }
 
     if (result.merged) {
-      // 기존 종목에 합산: 수량 + 가중평균 재계산
       setPortfolios((prev) =>
         prev.map((p) => {
           if (p.ticker !== values.ticker) return p;
@@ -135,7 +293,6 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
         }),
       );
     } else {
-      // 실제 DB에서 반환된 id를 사용해야 이후 수정/삭제가 정상 동작
       const newItem: PortfolioWithPrice = {
         id: result.id!,
         user_id: "",
@@ -160,9 +317,7 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
     }
     setPortfolios((prev) =>
       prev.map((p) =>
-        p.id === id
-          ? { ...p, quantity: values.quantity, avg_price: values.avg_price }
-          : p,
+        p.id === id ? { ...p, quantity: values.quantity, avg_price: values.avg_price } : p,
       ),
     );
   }
@@ -183,6 +338,11 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
       return;
     }
     setPortfolios((prev) => prev.filter((p) => p.id !== id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   }
 
   return (
@@ -206,21 +366,66 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
       )}
 
       {/* 페이지 헤더 */}
-      <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1 min-w-0">
           <h1 className="text-[22px] font-bold tracking-tight">보유 종목</h1>
           <p className="text-sm text-muted-foreground">보유 종목을 한눈에 관리하세요</p>
         </div>
         {hasStocks && (
-          <StockAddModal
-            trigger={
-              <Button size="sm" className="gap-1.5 shadow-sm">
-                <Plus className="size-3.5" />
-                주식 추가
-              </Button>
-            }
-            onSubmit={handleAddStock}
-          />
+          <div className="flex items-center gap-2 shrink-0">
+            {/* 내보내기 드롭다운 */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  {someSelected ? `${selectedIds.size}개 선택됨` : "내보내기"}
+                  <ChevronDown className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="bottom" sideOffset={4} className="w-44">
+                {!someSelected && (
+                  <p className="px-2 py-1.5 text-[11px] text-muted-foreground">
+                    종목을 선택해주세요
+                  </p>
+                )}
+                <DropdownMenuItem
+                  onClick={handleExportCSV}
+                  disabled={!someSelected}
+                  className="gap-2"
+                >
+                  <FileSpreadsheet className="size-4 text-emerald-600" />
+                  <span>엑셀 (CSV)</span>
+                  {someSelected && (
+                    <span className="ml-auto text-[11px] text-muted-foreground">
+                      {selectedIds.size}개
+                    </span>
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleExportPDF}
+                  disabled={!someSelected}
+                  className="gap-2"
+                >
+                  <FileText className="size-4 text-rose-500" />
+                  <span>PDF 인쇄</span>
+                  {someSelected && (
+                    <span className="ml-auto text-[11px] text-muted-foreground">
+                      {selectedIds.size}개
+                    </span>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <StockAddModal
+              trigger={
+                <Button size="sm" className="gap-1.5 shadow-sm">
+                  <Plus className="size-3.5" />
+                  주식 추가
+                </Button>
+              }
+              onSubmit={handleAddStock}
+            />
+          </div>
         )}
       </div>
 
@@ -228,6 +433,26 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
         <div className="flex flex-col gap-3">
           {/* 모바일: 카드 목록 */}
           <div className="flex flex-col gap-3 md:hidden">
+            {/* 전체 선택 */}
+            <div className="flex items-center gap-2 px-1">
+              <Checkbox
+                id="select-all-mobile"
+                checked={allSelected}
+                onCheckedChange={toggleSelectAll}
+              />
+              <label
+                htmlFor="select-all-mobile"
+                className="text-xs text-muted-foreground cursor-pointer select-none"
+              >
+                {allSelected ? "전체 해제" : "전체 선택"}
+              </label>
+              {someSelected && (
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {selectedIds.size}/{portfolios.length} 선택됨
+                </span>
+              )}
+            </div>
+
             {portfoliosWithPrice.map((portfolio) => {
               const priceData = priceDataMap[portfolio.ticker];
               const currentPrice = portfolio.current_price ?? portfolio.avg_price;
@@ -237,21 +462,30 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
               const isProfitPositive = profitRate >= 0;
               const changePercent = priceData?.changePercent ?? null;
               const isDayPositive = (changePercent ?? 0) >= 0;
+              const isSelected = selectedIds.has(portfolio.id);
 
               return (
                 <Card
                   key={portfolio.id}
-                  className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-150"
+                  className={`overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-150 ${
+                    isSelected ? "ring-2 ring-primary ring-offset-1" : ""
+                  }`}
                   onClick={() => handleOpenDetail(portfolio)}
                 >
                   <CardContent className="p-0">
-                    {/* 카드 상단: 종목 정보 + 액션 버튼 */}
+                    {/* 카드 상단: 체크박스 + 종목 정보 + 액션 버튼 */}
                     <div className="flex items-start justify-between px-5 pt-5 pb-4">
-                      <div className="flex flex-col gap-1.5">
-                        <p className="font-bold text-base leading-tight">{portfolio.name}</p>
-                        <Badge variant="secondary" className="w-fit text-[11px] font-mono tracking-wide">
-                          {portfolio.ticker}
-                        </Badge>
+                      <div className="flex items-start gap-3">
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelect(portfolio.id)}
+                            className="mt-0.5"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <p className="font-bold text-base leading-tight">{portfolio.name}</p>
+                        </div>
                       </div>
                       <div className="flex gap-0.5 -mr-1.5" onClick={(e) => e.stopPropagation()}>
                         <StockEditModal
@@ -281,13 +515,16 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
                             {formatCurrency(currentPrice, portfolio.currency)}
                           </p>
                           {changePercent != null && (
-                            <div className={`flex items-center gap-0.5 mb-0.5 text-sm font-semibold tabular-nums ${
-                              isDayPositive ? "text-emerald-500" : "text-rose-500"
-                            }`}>
-                              {isDayPositive
-                                ? <TrendingUp className="size-3.5 shrink-0" />
-                                : <TrendingDown className="size-3.5 shrink-0" />
-                              }
+                            <div
+                              className={`flex items-center gap-0.5 mb-0.5 text-sm font-semibold tabular-nums ${
+                                isDayPositive ? "text-emerald-500" : "text-rose-500"
+                              }`}
+                            >
+                              {isDayPositive ? (
+                                <TrendingUp className="size-3.5 shrink-0" />
+                              ) : (
+                                <TrendingDown className="size-3.5 shrink-0" />
+                              )}
                               {isDayPositive ? "+" : ""}
                               {changePercent.toFixed(2)}%
                             </div>
@@ -327,11 +564,13 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
                     </div>
 
                     {/* 수익률 푸터 */}
-                    <div className={`px-5 py-3.5 flex items-center justify-between border-t ${
-                      isProfitPositive
-                        ? "bg-emerald-500/[0.06] border-emerald-500/20"
-                        : "bg-rose-500/[0.06] border-rose-500/20"
-                    }`}>
+                    <div
+                      className={`px-5 py-3.5 flex items-center justify-between border-t ${
+                        isProfitPositive
+                          ? "bg-emerald-500/[0.06] border-emerald-500/20"
+                          : "bg-rose-500/[0.06] border-rose-500/20"
+                      }`}
+                    >
                       <p className="text-[11px] font-medium text-muted-foreground tracking-wide">
                         평가손익
                       </p>
@@ -339,16 +578,21 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
                         <Skeleton className="h-5 w-24" />
                       ) : portfolio.current_price != null ? (
                         <div className="flex items-center gap-2 tabular-nums">
-                          <span className={`text-sm font-bold ${
-                            isProfitPositive ? "text-emerald-500" : "text-rose-500"
-                          }`}>
-                            {isProfitPositive ? "+" : ""}{formatCurrency(profitAmount, portfolio.currency)}
+                          <span
+                            className={`text-sm font-bold ${
+                              isProfitPositive ? "text-emerald-500" : "text-rose-500"
+                            }`}
+                          >
+                            {isProfitPositive ? "+" : ""}
+                            {formatCurrency(profitAmount, portfolio.currency)}
                           </span>
-                          <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${
-                            isProfitPositive
-                              ? "bg-emerald-500/15 text-emerald-500"
-                              : "bg-rose-500/15 text-rose-500"
-                          }`}>
+                          <span
+                            className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${
+                              isProfitPositive
+                                ? "bg-emerald-500/15 text-emerald-500"
+                                : "bg-rose-500/15 text-rose-500"
+                            }`}
+                          >
                             {formatProfitRate(profitRate)}
                           </span>
                         </div>
@@ -368,8 +612,14 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-b">
+                    <TableHead className="w-10 h-10 px-4">
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="전체 선택"
+                      />
+                    </TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground h-10 px-4">종목명</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground h-10 px-3">티커</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground text-right h-10 px-4">현재가</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground text-right h-10 px-4">전일대비</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground text-right h-10 px-4">보유수량</TableHead>
@@ -389,36 +639,49 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
                     const isProfitPositive = profitRate >= 0;
                     const changePercent = priceData?.changePercent ?? null;
                     const isDayPositive = (changePercent ?? 0) >= 0;
+                    const isSelected = selectedIds.has(portfolio.id);
 
                     return (
                       <TableRow
                         key={portfolio.id}
-                        className="hover:bg-muted/40 transition-colors duration-100 border-b border-border/60 cursor-pointer"
+                        className={`hover:bg-muted/40 transition-colors duration-100 border-b border-border/60 cursor-pointer ${
+                          isSelected ? "bg-primary/5" : ""
+                        }`}
                         onClick={() => handleOpenDetail(portfolio)}
                       >
-                        <TableCell className="font-semibold text-sm px-4 py-3.5">{portfolio.name}</TableCell>
-                        <TableCell className="px-3 py-3.5">
-                          <Badge variant="secondary" className="text-[11px] font-mono tracking-wide">
-                            {portfolio.ticker}
-                          </Badge>
+                        <TableCell className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelect(portfolio.id)}
+                          />
                         </TableCell>
+                        <TableCell className="font-semibold text-sm px-4 py-3.5">{portfolio.name}</TableCell>
                         <TableCell className="text-right tabular-nums text-sm px-4 py-3.5">
                           {priceLoading ? (
                             <Skeleton className="h-4 w-16 ml-auto" />
                           ) : portfolio.current_price != null ? (
                             formatCurrency(currentPrice, portfolio.currency)
-                          ) : "-"}
+                          ) : (
+                            "-"
+                          )}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-sm px-4 py-3.5">
                           {priceLoading ? (
                             <Skeleton className="h-4 w-12 ml-auto" />
                           ) : changePercent != null ? (
-                            <span className={`font-semibold ${isDayPositive ? "text-emerald-500" : "text-rose-500"}`}>
-                              {isDayPositive ? "+" : ""}{changePercent.toFixed(2)}%
+                            <span
+                              className={`font-semibold ${isDayPositive ? "text-emerald-500" : "text-rose-500"}`}
+                            >
+                              {isDayPositive ? "+" : ""}
+                              {changePercent.toFixed(2)}%
                             </span>
-                          ) : "-"}
+                          ) : (
+                            "-"
+                          )}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums text-sm px-4 py-3.5">{portfolio.quantity}주</TableCell>
+                        <TableCell className="text-right tabular-nums text-sm px-4 py-3.5">
+                          {portfolio.quantity}주
+                        </TableCell>
                         <TableCell className="text-right tabular-nums text-sm text-muted-foreground px-4 py-3.5">
                           {formatCurrency(portfolio.avg_price, portfolio.currency)}
                         </TableCell>
@@ -429,23 +692,34 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
                             formatCurrency(evalAmount, portfolio.currency)
                           )}
                         </TableCell>
-                        <TableCell className={`text-right font-bold tabular-nums text-sm px-4 py-3.5 ${isProfitPositive ? "text-emerald-500" : "text-rose-500"}`}>
+                        <TableCell
+                          className={`text-right font-bold tabular-nums text-sm px-4 py-3.5 ${
+                            isProfitPositive ? "text-emerald-500" : "text-rose-500"
+                          }`}
+                        >
                           {priceLoading ? (
                             <Skeleton className="h-4 w-20 ml-auto" />
                           ) : portfolio.current_price != null ? (
                             <div className="flex flex-col items-end gap-0.5">
                               <span>{formatProfitRate(profitRate)}</span>
                               <span className="text-xs font-medium opacity-80">
-                                {isProfitPositive ? "+" : ""}{formatCurrency(profitAmount, portfolio.currency)}
+                                {isProfitPositive ? "+" : ""}
+                                {formatCurrency(profitAmount, portfolio.currency)}
                               </span>
                             </div>
-                          ) : "-"}
+                          ) : (
+                            "-"
+                          )}
                         </TableCell>
                         <TableCell className="px-3 py-3.5" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-0.5">
                             <StockEditModal
                               trigger={
-                                <Button variant="ghost" size="icon-sm" className="opacity-60 hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="opacity-60 hover:opacity-100 transition-opacity"
+                                >
                                   <Pencil className="size-3.5" />
                                   <span className="sr-only">수정</span>
                                 </Button>
@@ -494,9 +768,7 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
   );
 }
 
-/**
- * 삭제 확인 AlertDialog
- */
+/** 삭제 확인 AlertDialog */
 function DeleteAlertDialog({ stockName, onConfirm }: { stockName: string; onConfirm: () => void }) {
   return (
     <AlertDialog>

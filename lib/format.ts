@@ -12,11 +12,11 @@ export function formatUSD(value: number): string {
     currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(value).replace("$", "$\u202F");
 }
 
 /**
- * 원화 포맷: ₩1,234,567
+ * 원화 포맷: ₩ 1,234,567
  */
 export function formatKRW(value: number): string {
   return new Intl.NumberFormat("ko-KR", {
@@ -24,7 +24,7 @@ export function formatKRW(value: number): string {
     currency: "KRW",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(value).replace("₩", "₩\u202F");
 }
 
 /**
