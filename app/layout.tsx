@@ -9,13 +9,13 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "투자 기록",
-  description: "내 포트폴리오를 한눈에 관리하는 투자 기록 앱",
+  title: "핀로그",
+  description: "내 포트폴리오를 한눈에 관리하는 금융 기록 앱",
   // manifest link는 app/manifest.ts가 자동 주입 — 중복 방지를 위해 여기서는 제거
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "투자 기록",
+    title: "핀로그",
   },
   icons: {
     apple: "/apple-touch-icon.png",

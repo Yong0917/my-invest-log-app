@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "투자 기록",
-    short_name: "투자 기록",
-    description: "내 포트폴리오를 한눈에 관리하는 투자 기록 앱",
+    name: "핀로그",
+    short_name: "핀로그",
+    description: "내 포트폴리오를 한눈에 관리하는 금융 기록 앱",
     start_url: "/",
     scope: "/",
     display: "standalone",
