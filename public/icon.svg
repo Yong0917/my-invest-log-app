@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 배경 -->
+  <rect width="512" height="512" rx="112" fill="#09090b"/>
+  <!-- 막대 차트 아이콘 -->
+  <rect x="96" y="280" width="72" height="136" rx="12" fill="#ffffff" opacity="0.9"/>
+  <rect x="220" y="196" width="72" height="220" rx="12" fill="#ffffff"/>
+  <rect x="344" y="120" width="72" height="296" rx="12" fill="#10b981"/>
+  <!-- 상승 추세선 -->
+  <polyline points="132,260 256,176 380,100" stroke="#10b981" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- 추세선 끝 점 -->
+  <circle cx="380" cy="100" r="14" fill="#10b981"/>
+</svg>
