@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StockAddModal } from "@/components/portfolio/StockAddModal";
 import { StockEditModal } from "@/components/portfolio/StockEditModal";
+import { StockDetailModal } from "@/components/portfolio/StockDetailModal";
 import {
   createPortfolio,
   updatePortfolio,
@@ -56,6 +57,16 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
   const [priceDataMap, setPriceDataMap] = useState<Record<string, PriceData>>({});
   const [priceLoading, setPriceLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [detailPortfolio, setDetailPortfolio] = useState<PortfolioWithPrice | null>(null);
+
+  // 에러 메시지 5초 후 자동 제거
+  useEffect(() => {
+    if (!actionError) return;
+    const timer = setTimeout(() => setActionError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [actionError]);
+  const [detailChangePercent, setDetailChangePercent] = useState<number | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // 현재가 + 전일대비 병렬 조회
   const portfolioIds = useMemo(() => portfolios.map((p) => p.id).join(","), [portfolios]);
@@ -66,21 +77,26 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
     setPriceLoading(true);
     const tickers = portfolios.map((p) => p.ticker);
 
-    Promise.all(
+    Promise.allSettled(
       tickers.map((ticker) =>
         fetch(`/api/stock-price?ticker=${encodeURIComponent(ticker)}`)
-          .then((r) => r.json())
+          .then((r) => {
+            if (!r.ok) throw new Error(`API error: ${r.status}`);
+            return r.json();
+          })
           .then((data) => ({
             ticker,
             price: data.price as number | undefined,
             changePercent: data.changePercent as number | null,
-          }))
-          .catch(() => ({ ticker, price: undefined, changePercent: null })),
+          })),
       ),
     ).then((results) => {
       const map: Record<string, PriceData> = {};
-      for (const { ticker, price, changePercent } of results) {
-        if (price != null) map[ticker] = { price, changePercent: changePercent ?? null };
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          const { ticker, price, changePercent } = result.value;
+          if (price != null) map[ticker] = { price, changePercent: changePercent ?? null };
+        }
       }
       setPriceDataMap(map);
       setPriceLoading(false);
@@ -151,6 +167,13 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
     );
   }
 
+  // 상세 모달 오픈
+  function handleOpenDetail(portfolio: PortfolioWithPrice) {
+    setDetailPortfolio(portfolio);
+    setDetailChangePercent(priceDataMap[portfolio.ticker]?.changePercent ?? null);
+    setDetailOpen(true);
+  }
+
   // 종목 삭제 핸들러
   async function handleDeleteStock(id: string) {
     setActionError(null);
@@ -164,6 +187,14 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* 종목 상세 모달 */}
+      <StockDetailModal
+        portfolio={detailPortfolio}
+        changePercent={detailChangePercent}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+      />
+
       {/* 에러 배너 */}
       {actionError && (
         <div className="rounded-md bg-destructive/10 border border-destructive/30 px-4 py-3 text-sm text-destructive flex items-center justify-between">
@@ -208,7 +239,11 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
               const isDayPositive = (changePercent ?? 0) >= 0;
 
               return (
-                <Card key={portfolio.id} className="overflow-hidden">
+                <Card
+                  key={portfolio.id}
+                  className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-150"
+                  onClick={() => handleOpenDetail(portfolio)}
+                >
                   <CardContent className="p-0">
                     {/* 카드 상단: 종목 정보 + 액션 버튼 */}
                     <div className="flex items-start justify-between px-5 pt-5 pb-4">
@@ -218,7 +253,7 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
                           {portfolio.ticker}
                         </Badge>
                       </div>
-                      <div className="flex gap-0.5 -mr-1.5">
+                      <div className="flex gap-0.5 -mr-1.5" onClick={(e) => e.stopPropagation()}>
                         <StockEditModal
                           trigger={
                             <Button variant="ghost" size="icon-sm">
@@ -356,7 +391,11 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
                     const isDayPositive = (changePercent ?? 0) >= 0;
 
                     return (
-                      <TableRow key={portfolio.id} className="hover:bg-muted/40 transition-colors duration-100 border-b border-border/60">
+                      <TableRow
+                        key={portfolio.id}
+                        className="hover:bg-muted/40 transition-colors duration-100 border-b border-border/60 cursor-pointer"
+                        onClick={() => handleOpenDetail(portfolio)}
+                      >
                         <TableCell className="font-semibold text-sm px-4 py-3.5">{portfolio.name}</TableCell>
                         <TableCell className="px-3 py-3.5">
                           <Badge variant="secondary" className="text-[11px] font-mono tracking-wide">
@@ -402,7 +441,7 @@ export function PortfolioClient({ initialPortfolios }: PortfolioClientProps) {
                             </div>
                           ) : "-"}
                         </TableCell>
-                        <TableCell className="px-3 py-3.5">
+                        <TableCell className="px-3 py-3.5" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-0.5">
                             <StockEditModal
                               trigger={
