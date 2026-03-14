@@ -37,17 +37,22 @@ export function DashboardClient({ initialPortfolios }: DashboardClientProps) {
     setPriceLoading(true);
     const tickers = initialPortfolios.map((p) => p.ticker);
 
-    Promise.all(
+    Promise.allSettled(
       tickers.map((ticker) =>
         fetch(`/api/stock-price?ticker=${encodeURIComponent(ticker)}`)
-          .then((r) => r.json())
-          .then((data) => ({ ticker, price: data.price as number | undefined }))
-          .catch(() => ({ ticker, price: undefined })),
+          .then((r) => {
+            if (!r.ok) throw new Error(`API error: ${r.status}`);
+            return r.json();
+          })
+          .then((data) => ({ ticker, price: data.price as number | undefined })),
       ),
     ).then((results) => {
       const map: Record<string, number> = {};
-      for (const { ticker, price } of results) {
-        if (price != null) map[ticker] = price;
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          const { ticker, price } = result.value;
+          if (price != null) map[ticker] = price;
+        }
       }
       setPriceMap(map);
       setPriceLoading(false);
@@ -131,7 +136,12 @@ export function DashboardClient({ initialPortfolios }: DashboardClientProps) {
                       type="number"
                       inputMode="numeric"
                       value={exchangeRate}
-                      onChange={(e) => setExchangeRate(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || parseFloat(val) > 0) setExchangeRate(val);
+                      }}
+                      min="1"
+                      max="100000"
                       className="w-28 text-right tabular-nums"
                       placeholder="1480"
                     />
