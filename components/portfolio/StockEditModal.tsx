@@ -33,7 +33,7 @@ import {
   portfolioFormSchema,
   type PortfolioFormValues,
 } from "@/schemas/portfolio";
-import type { Portfolio, Currency } from "@/types/portfolio";
+import type { Portfolio, PortfolioGroup, Currency } from "@/types/portfolio";
 
 /** 주식 수정 모달 Props */
 interface StockEditModalProps {
@@ -41,6 +41,8 @@ interface StockEditModalProps {
   trigger: ReactNode;
   /** 수정할 종목 데이터 */
   portfolio: Portfolio;
+  /** 그룹 목록 (선택 필드 표시용) */
+  groups?: PortfolioGroup[];
   /** 폼 제출 성공 시 호출되는 핸들러 */
   onSubmit: (id: string, values: PortfolioFormValues) => void | Promise<void>;
 }
@@ -55,6 +57,7 @@ interface StockEditModalProps {
 export function StockEditModal({
   trigger,
   portfolio,
+  groups = [],
   onSubmit,
 }: StockEditModalProps) {
   // 모달 열림/닫힘 상태 직접 제어 (저장 후 자동 닫힘 처리용)
@@ -69,6 +72,7 @@ export function StockEditModal({
       quantity: portfolio.quantity,
       avg_price: portfolio.avg_price,
       currency: portfolio.currency as Currency,
+      group_id: portfolio.group_id ?? null,
     },
   });
 
@@ -83,6 +87,7 @@ export function StockEditModal({
       quantity: portfolio.quantity,
       avg_price: portfolio.avg_price,
       currency: portfolio.currency as Currency,
+      group_id: portfolio.group_id ?? null,
     });
   }, [portfolio, form]);
 
@@ -107,6 +112,7 @@ export function StockEditModal({
       quantity: portfolio.quantity,
       avg_price: portfolio.avg_price,
       currency: portfolio.currency as Currency,
+      group_id: portfolio.group_id ?? null,
     });
     setOpen(false);
   }
@@ -239,6 +245,44 @@ export function StockEditModal({
                 </FormItem>
               )}
             />
+
+            {/* 그룹 선택 (그룹이 있을 때만 표시) */}
+            {groups.length > 0 && (
+              <FormField
+                control={form.control}
+                name="group_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>그룹 <span className="text-muted-foreground font-normal">(선택)</span></FormLabel>
+                    <Select
+                      onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+                      value={field.value ?? "none"}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="그룹 선택 (선택사항)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">그룹 없음 (미분류)</SelectItem>
+                        {groups.map((g) => (
+                          <SelectItem key={g.id} value={g.id}>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="inline-block size-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: g.color }}
+                              />
+                              {g.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" onClick={handleCancel} disabled={isPending}>

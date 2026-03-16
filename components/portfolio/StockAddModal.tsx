@@ -33,6 +33,7 @@ import {
   portfolioFormSchema,
   type PortfolioFormValues,
 } from "@/schemas/portfolio";
+import type { PortfolioGroup } from "@/types/portfolio";
 
 interface SearchResult {
   ticker: string;
@@ -42,10 +43,11 @@ interface SearchResult {
 
 interface StockAddModalProps {
   trigger: ReactNode;
+  groups?: PortfolioGroup[];
   onSubmit: (values: PortfolioFormValues) => void | Promise<void>;
 }
 
-export function StockAddModal({ trigger, onSubmit }: StockAddModalProps) {
+export function StockAddModal({ trigger, groups = [], onSubmit }: StockAddModalProps) {
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -62,6 +64,7 @@ export function StockAddModal({ trigger, onSubmit }: StockAddModalProps) {
       quantity: NaN,
       avg_price: NaN,
       currency: "USD" as const,
+      group_id: null,
     },
   });
 
@@ -302,6 +305,44 @@ export function StockAddModal({ trigger, onSubmit }: StockAddModalProps) {
                 </FormItem>
               )}
             />
+
+            {/* 그룹 선택 (그룹이 있을 때만 표시) */}
+            {groups.length > 0 && (
+              <FormField
+                control={form.control}
+                name="group_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>그룹 <span className="text-muted-foreground font-normal">(선택)</span></FormLabel>
+                    <Select
+                      onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+                      value={field.value ?? "none"}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="그룹 선택 (선택사항)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">그룹 없음 (미분류)</SelectItem>
+                        {groups.map((g) => (
+                          <SelectItem key={g.id} value={g.id}>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="inline-block size-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: g.color }}
+                              />
+                              {g.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" onClick={handleCancel} disabled={submitting}>

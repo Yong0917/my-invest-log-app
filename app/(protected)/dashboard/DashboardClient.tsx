@@ -13,10 +13,11 @@ import {
   calcEvalAmount,
 } from "@/lib/calculate";
 import { formatUSD, formatKRW, formatProfitRate, formatCurrency } from "@/lib/format";
-import type { Portfolio, PortfolioWithPrice } from "@/types/portfolio";
+import type { Portfolio, PortfolioGroup, PortfolioWithPrice } from "@/types/portfolio";
 
 interface DashboardClientProps {
   initialPortfolios: Portfolio[];
+  initialGroups: PortfolioGroup[];
 }
 
 /** 파이 차트용 색상 팔레트 */
@@ -31,11 +32,13 @@ const CHART_COLORS = [
  * - 환율 자동 조회 + 수동 입력 지원
  * - 자산 배분 파이 차트 표시 (하단)
  */
-export function DashboardClient({ initialPortfolios }: DashboardClientProps) {
+export function DashboardClient({ initialPortfolios, initialGroups }: DashboardClientProps) {
   const [priceMap, setPriceMap] = useState<Record<string, number>>({});
   const [priceLoading, setPriceLoading] = useState(false);
   const [exchangeRate, setExchangeRate] = useState<string>("");
   const [rateLoading, setRateLoading] = useState(false);
+  // "all" = 전체, null = 미분류, string = 그룹 ID
+  const [activeGroupId, setActiveGroupId] = useState<string | null | "all">("all");
 
   // 현재가 병렬 조회
   const portfolioIds = useMemo(
@@ -95,8 +98,15 @@ export function DashboardClient({ initialPortfolios }: DashboardClientProps) {
     current_price: priceMap[p.ticker],
   }));
 
-  const totalEval = calcTotalEvalAmount(portfoliosWithPrice);
-  const totalInvest = calcTotalInvestAmount(portfoliosWithPrice);
+  // 그룹 탭 필터링
+  const filteredPortfolios = useMemo(() => {
+    if (activeGroupId === "all") return portfoliosWithPrice;
+    if (activeGroupId === null) return portfoliosWithPrice.filter((p) => p.group_id === null);
+    return portfoliosWithPrice.filter((p) => p.group_id === activeGroupId);
+  }, [portfoliosWithPrice, activeGroupId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const totalEval = calcTotalEvalAmount(filteredPortfolios);
+  const totalInvest = calcTotalInvestAmount(filteredPortfolios);
 
   const usdProfit = totalEval.usd - totalInvest.usd;
   const krwProfit = totalEval.krw - totalInvest.krw;
@@ -106,6 +116,9 @@ export function DashboardClient({ initialPortfolios }: DashboardClientProps) {
   const hasUsd = totalInvest.usd > 0 || totalEval.usd > 0;
   const hasKrw = totalInvest.krw > 0 || totalEval.krw > 0;
   const hasStocks = initialPortfolios.length > 0;
+  const hasGroups = initialGroups.length > 0;
+  // 미분류 종목이 있는지 확인
+  const hasUngrouped = initialPortfolios.some((p) => p.group_id === null);
 
   // 환율 기반 통합 합계 계산
   const rate = parseFloat(exchangeRate) || 0;
@@ -117,8 +130,8 @@ export function DashboardClient({ initialPortfolios }: DashboardClientProps) {
 
   // 자산 배분 차트 데이터 (USD는 환율 적용해 KRW 통일, 없으면 원래 값)
   const allocationData = useMemo(() => {
-    if (portfoliosWithPrice.length === 0) return [];
-    return portfoliosWithPrice
+    if (filteredPortfolios.length === 0) return [];
+    return filteredPortfolios
       .map((p) => {
         const price = p.current_price ?? p.avg_price;
         const evalAmt = calcEvalAmount(price, p.quantity);
@@ -136,6 +149,51 @@ export function DashboardClient({ initialPortfolios }: DashboardClientProps) {
         <h1 className="text-[22px] font-bold tracking-tight">대시보드</h1>
         <p className="text-sm text-muted-foreground">포트폴리오 요약을 확인하세요</p>
       </div>
+
+      {/* 그룹 탭 필터 (그룹이 1개 이상일 때만 표시) */}
+      {hasStocks && hasGroups && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            onClick={() => setActiveGroupId("all")}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 ${
+              activeGroupId === "all"
+                ? "bg-foreground text-background"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            전체
+          </button>
+          {initialGroups.map((group) => (
+            <button
+              key={group.id}
+              onClick={() => setActiveGroupId(group.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 ${
+                activeGroupId === group.id
+                  ? "bg-foreground text-background"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              <span
+                className="inline-block size-2 rounded-full shrink-0"
+                style={{ backgroundColor: group.color }}
+              />
+              {group.name}
+            </button>
+          ))}
+          {hasUngrouped && (
+            <button
+              onClick={() => setActiveGroupId(null)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 ${
+                activeGroupId === null
+                  ? "bg-foreground text-background"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              미분류
+            </button>
+          )}
+        </div>
+      )}
 
       {hasStocks ? (
         <>

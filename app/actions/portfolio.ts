@@ -65,6 +65,7 @@ export async function createPortfolio(
       quantity: data.quantity,
       avg_price: data.avg_price,
       currency: data.currency,
+      group_id: data.group_id ?? null,
     })
     .select("id")
     .single();
@@ -78,7 +79,7 @@ export async function createPortfolio(
 
 export async function updatePortfolio(
   id: string,
-  data: Pick<PortfolioFormValues, "quantity" | "avg_price">,
+  data: Pick<PortfolioFormValues, "quantity" | "avg_price" | "currency" | "group_id">,
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
   const {
@@ -92,6 +93,8 @@ export async function updatePortfolio(
     .update({
       quantity: data.quantity,
       avg_price: data.avg_price,
+      currency: data.currency,
+      group_id: data.group_id ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
