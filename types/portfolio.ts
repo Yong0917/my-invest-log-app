@@ -3,6 +3,9 @@ import type { Tables } from "@/lib/supabase/database.types";
 /** Supabase portfolios 테이블 Row 타입 */
 export type Portfolio = Tables<"portfolios">;
 
+/** Supabase portfolio_groups 테이블 Row 타입 */
+export type PortfolioGroup = Tables<"portfolio_groups">;
+
 /** currency 타입 */
 export type Currency = "KRW" | "USD";
 

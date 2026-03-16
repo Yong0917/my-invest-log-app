@@ -14,11 +14,43 @@ export type Database = {
   }
   public: {
     Tables: {
+      portfolio_groups: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          color: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          color?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          color?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_groups_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       portfolios: {
         Row: {
           avg_price: number
           created_at: string
           currency: string
+          group_id: string | null
           id: string
           name: string
           quantity: number
@@ -30,6 +62,7 @@ export type Database = {
           avg_price: number
           created_at?: string
           currency: string
+          group_id?: string | null
           id?: string
           name: string
           quantity: number
@@ -41,6 +74,7 @@ export type Database = {
           avg_price?: number
           created_at?: string
           currency?: string
+          group_id?: string | null
           id?: string
           name?: string
           quantity?: number
@@ -48,7 +82,14 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "portfolios_group_id_fkey"
+            columns: ["group_id"]
+            referencedRelation: "portfolio_groups"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {

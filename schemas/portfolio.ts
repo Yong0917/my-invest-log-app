@@ -23,7 +23,17 @@ export const portfolioFormSchema = z.object({
     .positive("매수가는 0보다 커야 합니다"),
   /** 통화 */
   currency: z.enum(["KRW", "USD"]),
+  /** 그룹 ID (선택 사항) */
+  group_id: z.string().nullable().optional(),
 });
 
 /** 폼 값 타입 — React Hook Form에서 사용 */
 export type PortfolioFormValues = z.infer<typeof portfolioFormSchema>;
+
+/** 그룹 생성/수정 폼 스키마 */
+export const groupFormSchema = z.object({
+  name: z.string().min(1, "그룹명을 입력해주세요").max(30, "30자 이하로 입력해주세요"),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "올바른 색상 코드를 입력해주세요"),
+});
+
+export type GroupFormValues = z.infer<typeof groupFormSchema>;
