@@ -1,5 +1,6 @@
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { Toaster } from "sonner";
 
 /**
  * 인증된 사용자용 레이아웃
@@ -22,6 +23,9 @@ export default function ProtectedLayout({
 
       {/* 하단 탭바 네비게이션 */}
       <BottomNav />
+
+      {/* 토스트 알림 */}
+      <Toaster position="top-center" richColors />
     </div>
   );
 }

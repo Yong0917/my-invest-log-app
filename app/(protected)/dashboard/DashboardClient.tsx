@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { BarChart2, ArrowRight, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,11 +63,19 @@ export function DashboardClient({ initialPortfolios, initialGroups }: DashboardC
       ),
     ).then((results) => {
       const map: Record<string, number> = {};
+      let failCount = 0;
       for (const result of results) {
         if (result.status === "fulfilled") {
           const { ticker, price } = result.value;
           if (price != null) map[ticker] = price;
+        } else {
+          failCount++;
         }
+      }
+      if (failCount > 0) {
+        toast.error(`${failCount}개 종목의 현재가를 불러오지 못했습니다.`, {
+          description: "잠시 후 새로고침해 주세요.",
+        });
       }
       setPriceMap(map);
       setPriceLoading(false);
@@ -82,7 +91,9 @@ export function DashboardClient({ initialPortfolios, initialGroups }: DashboardC
       const data = await res.json();
       if (data.rate) setExchangeRate(String(data.rate));
     } catch {
-      // 조회 실패 시 기존 값 유지
+      toast.error("환율 정보를 불러오지 못했습니다.", {
+        description: "직접 환율을 입력하거나 새로고침해 주세요.",
+      });
     } finally {
       setRateLoading(false);
     }
