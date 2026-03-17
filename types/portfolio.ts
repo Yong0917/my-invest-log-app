@@ -16,3 +16,9 @@ export type Currency = "KRW" | "USD";
 export type PortfolioWithPrice = Portfolio & {
   current_price?: number;
 };
+
+/** Yahoo Finance API 현재가 + 전일대비 데이터 */
+export interface PriceData {
+  price: number;
+  changePercent: number | null;
+}
