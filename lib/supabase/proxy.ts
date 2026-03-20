@@ -63,6 +63,7 @@ export async function updateSession(request: NextRequest) {
     "/icon-512.png",
     "/icon-maskable.png",
     "/icon.svg",
+    "/api/keep-alive",
   ];
   if (
     !user &&
