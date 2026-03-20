@@ -123,15 +123,18 @@ export function StockAddModal({ trigger, groups = [], onSubmit }: StockAddModalP
     form.setValue("ticker", result.ticker, { shouldValidate: true });
     form.setValue("name", result.name, { shouldValidate: true });
 
-    // 현재가 조회로 통화 자동 설정
+    // 현재가 조회로 통화·평균 매수가 자동 설정
     try {
       const res = await fetch(`/api/stock-price?ticker=${encodeURIComponent(result.ticker)}`);
       const data = await res.json();
       if (data.currency === "KRW" || data.currency === "USD") {
         form.setValue("currency", data.currency, { shouldValidate: true });
       }
+      if (typeof data.price === "number" && data.price > 0) {
+        form.setValue("avg_price", data.price, { shouldValidate: true });
+      }
     } catch {
-      // 통화 조회 실패 시 기본값 유지
+      // 현재가 조회 실패 시 기본값 유지
     }
   }
 
