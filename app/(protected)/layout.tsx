@@ -3,8 +3,8 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { Toaster } from "sonner";
 
 /**
- * 인증된 사용자용 레이아웃
- * Header(상단) + 하단 탭바 포함
+ * 인증된 사용자 레이아웃
+ * Header + main content + BottomNav
  */
 export default function ProtectedLayout({
   children,
@@ -12,20 +12,25 @@ export default function ProtectedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col bg-muted/30">
-      {/* 공통 헤더 */}
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      {/* 메인 콘텐츠 영역 */}
-      <main className="flex-1 mx-auto w-full max-w-screen-xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="flex-1 mx-auto w-full max-w-screen-xl px-4 py-6 sm:px-6 lg:px-8 sm:py-8">
         {children}
       </main>
 
-      {/* 하단 탭바 네비게이션 */}
       <BottomNav />
 
-      {/* 토스트 알림 */}
-      <Toaster position="top-center" richColors />
+      <Toaster
+        position="top-center"
+        richColors
+        toastOptions={{
+          style: {
+            fontFamily: "var(--font-sans, ui-sans-serif)",
+            fontSize: "13px",
+          },
+        }}
+      />
     </div>
   );
 }

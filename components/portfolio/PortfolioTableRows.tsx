@@ -129,14 +129,19 @@ export function DesktopTableRow({
           onCheckedChange={() => onToggleSelect(portfolio.id)}
         />
       </TableCell>
-      <TableCell className="font-semibold text-sm px-4 py-3.5">{portfolio.name}</TableCell>
+      <TableCell className="px-4 py-3.5">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-display font-semibold text-sm text-foreground">{portfolio.name}</span>
+          <span className="text-[11px] font-mono text-muted-foreground">{portfolio.ticker}</span>
+        </div>
+      </TableCell>
       <TableCell className="text-right tabular-nums text-sm px-4 py-3.5">
         {priceLoading ? (
           <Skeleton className="h-4 w-16 ml-auto" />
         ) : portfolio.current_price != null ? (
-          formatCurrency(currentPrice, portfolio.currency)
+          <span className="font-mono">{formatCurrency(currentPrice, portfolio.currency)}</span>
         ) : (
-          "-"
+          "—"
         )}
       </TableCell>
       <TableCell className="text-right tabular-nums text-sm px-4 py-3.5">
@@ -144,7 +149,7 @@ export function DesktopTableRow({
           <Skeleton className="h-4 w-12 ml-auto" />
         ) : changePercent != null ? (
           <span
-            className={`font-semibold ${isDayPositive ? "text-emerald-500" : "text-rose-500"}`}
+            className={`font-mono font-semibold ${isDayPositive ? "text-profit" : "text-loss"}`}
           >
             {isDayPositive ? "+" : ""}
             {changePercent.toFixed(2)}%
@@ -167,8 +172,8 @@ export function DesktopTableRow({
         )}
       </TableCell>
       <TableCell
-        className={`text-right font-bold tabular-nums text-sm px-4 py-3.5 ${
-          isProfitPositive ? "text-emerald-500" : "text-rose-500"
+        className={`text-right font-mono font-bold tabular-nums text-sm px-4 py-3.5 ${
+          isProfitPositive ? "text-profit" : "text-loss"
         }`}
       >
         {priceLoading ? (
