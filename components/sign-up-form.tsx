@@ -1,25 +1,12 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function SignUpForm({
-  className,
-  ...props
-}: React.ComponentPropsWithoutRef<"div">) {
+export function SignUpForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
@@ -43,74 +30,122 @@ export function SignUpForm({
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-        },
+        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
       });
       if (error) throw error;
       router.push("/auth/sign-up-success");
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "오류가 발생했습니다");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "오류가 발생했습니다");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">회원가입</CardTitle>
-          <CardDescription>새 계정을 만들어 시작해보세요</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignUp}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="email">이메일</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="example@email.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">비밀번호</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="repeat-password">비밀번호 확인</Label>
-                <Input
-                  id="repeat-password"
-                  type="password"
-                  required
-                  value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
-                />
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "계정 생성 중..." : "회원가입"}
-              </Button>
-            </div>
-            <div className="mt-4 text-center text-sm">
-              이미 계정이 있으신가요?{" "}
-              <Link href="/auth/login" className="underline underline-offset-4">
-                로그인
-              </Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col gap-8">
+      {/* Mobile-only brand header */}
+      <div className="flex flex-col gap-5 lg:hidden">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center">
+            <TrendingUp className="w-4 h-4 text-primary" />
+          </div>
+          <span className="font-display font-bold text-lg tracking-tight">핀로그</span>
+        </div>
+      </div>
+
+      {/* Heading */}
+      <div className="space-y-1.5">
+        <h2 className="font-display font-bold text-2xl tracking-tight text-foreground">
+          계정 만들기
+        </h2>
+        <p className="text-sm text-muted-foreground">새 계정으로 시작해보세요</p>
+      </div>
+
+      {/* Form */}
+      <form onSubmit={handleSignUp} className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <label htmlFor="email" className="text-sm font-medium text-foreground">
+            이메일
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="example@email.com"
+            className="h-11 w-full rounded-lg border border-input bg-card px-4 text-sm
+                       text-foreground placeholder:text-muted-foreground/60
+                       focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-ring
+                       transition-all duration-150"
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label htmlFor="password" className="text-sm font-medium text-foreground">
+            비밀번호
+          </label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-11 w-full rounded-lg border border-input bg-card px-4 text-sm
+                       text-foreground placeholder:text-muted-foreground/60
+                       focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-ring
+                       transition-all duration-150"
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label htmlFor="repeat-password" className="text-sm font-medium text-foreground">
+            비밀번호 확인
+          </label>
+          <input
+            id="repeat-password"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={repeatPassword}
+            onChange={(e) => setRepeatPassword(e.target.value)}
+            className="h-11 w-full rounded-lg border border-input bg-card px-4 text-sm
+                       text-foreground placeholder:text-muted-foreground/60
+                       focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-ring
+                       transition-all duration-150"
+          />
+        </div>
+
+        {error && (
+          <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="h-11 w-full rounded-lg bg-primary text-primary-foreground font-display
+                     font-semibold text-sm tracking-wide
+                     hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring/40
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     transition-all duration-150 mt-1"
+        >
+          {isLoading ? "계정 생성 중…" : "회원가입"}
+        </button>
+      </form>
+
+      <p className="text-center text-sm text-muted-foreground">
+        이미 계정이 있으신가요?{" "}
+        <Link
+          href="/auth/login"
+          className="text-primary font-medium hover:underline underline-offset-4 transition-colors"
+        >
+          로그인
+        </Link>
+      </p>
     </div>
   );
 }
