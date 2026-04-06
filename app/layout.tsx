@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Syne, IBM_Plex_Mono, DM_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "핀로그",
   description: "내 포트폴리오를 한눈에 관리하는 금융 기록 앱",
-  // manifest link는 app/manifest.ts가 자동 주입 — 중복 방지를 위해 여기서는 제거
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -24,8 +23,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f8fb" },
+    { media: "(prefers-color-scheme: dark)",  color: "#070e1c" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -34,10 +33,27 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  display: "swap",
+/* ─ Display font: Syne ─────────────────────── */
+const syne = Syne({
+  variable: "--font-display",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
+/* ─ Monospace: IBM Plex Mono (numbers/data) ── */
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
+
+/* ─ UI body: DM Sans ─────────────────────────── */
+const dmSans = DM_Sans({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export default function RootLayout({
@@ -46,12 +62,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="ko" suppressHydrationWarning>
       <head>
-        {/* iOS Safari PWA 전체화면 모드 — Next.js가 자동 생성 안 함 */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
-      <body className={`${geistSans.className} antialiased`}>
+      <body
+        className={`${syne.variable} ${ibmPlexMono.variable} ${dmSans.variable} antialiased`}
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
